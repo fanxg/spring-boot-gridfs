@@ -34,7 +34,7 @@ public class FileController {
   public HttpEntity<byte[]> createOrUpdate(@RequestParam("file") MultipartFile file) {
     String name = file.getOriginalFilename();
     try {
-      Optional<GridFSDBFile> existing = maybeLoadFile(name);
+      Optional<GridFSDBFile> existing = maybeLoadFileByName(name);
       if (existing.isPresent()) {
         gridFsTemplate.delete(getFilenameQuery(name));
       }
@@ -53,35 +53,70 @@ public class FileController {
         .collect(Collectors.toList());
   }
 
+  @GetMapping("getIds")
+  public @ResponseBody List<String> ids() {
+    return getFiles().stream()
+        .map(e -> e.getId().toString())
+        .collect(Collectors.toList());
+  }
+
+  @GetMapping("deleteAll")
+  public void deleteAll(){
+    gridFsTemplate.delete(null);
+  }
+
   @RequestMapping(path = "/{name:.+}", method = RequestMethod.GET)
   public HttpEntity<byte[]> get(@PathVariable("name") String name) {
-      try {
-        Optional<GridFSDBFile> optionalCreated = maybeLoadFile(name);
-        if (optionalCreated.isPresent()) {
-          GridFSDBFile created = optionalCreated.get();
-          ByteArrayOutputStream os = new ByteArrayOutputStream();
-          created.writeTo(os);
-          HttpHeaders headers = new HttpHeaders();
-          headers.add(HttpHeaders.CONTENT_TYPE, created.getContentType());
-          return new HttpEntity<>(os.toByteArray(), headers);
-        } else {
-          return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-      } catch (IOException e) {
-        return new ResponseEntity<>(HttpStatus.IM_USED);
-      }
+    Optional<GridFSDBFile> optionalCreated = maybeLoadFileByName(name);
+    if (optionalCreated.isPresent()) {
+      return getheepEntity(optionalCreated);
+    } else {
+      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
+  }
+
+  @RequestMapping(path = "/id/{id:.+}", method = RequestMethod.GET)
+  public HttpEntity<byte[]> getById(@PathVariable("id") String id) {
+    Optional<GridFSDBFile> optionalCreated = maybeLoadFileById(id);
+    if (optionalCreated.isPresent()) {
+      return getheepEntity(optionalCreated);
+    } else {
+      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
+  }
+
+  private HttpEntity getheepEntity(Optional<GridFSDBFile> optionalCreated) {
+    GridFSDBFile created = optionalCreated.get();
+    ByteArrayOutputStream os = new ByteArrayOutputStream();
+    try {
+      created.writeTo(os);
+      HttpHeaders headers = new HttpHeaders();
+      headers.add(HttpHeaders.CONTENT_TYPE, created.getContentType());
+      return new HttpEntity<>(os.toByteArray(), headers);
+    } catch (IOException e) {
+      return new ResponseEntity<>(HttpStatus.IM_USED);
+    }
   }
 
   private List<GridFSDBFile> getFiles() {
     return gridFsTemplate.find(null);
   }
 
-  private Optional<GridFSDBFile> maybeLoadFile(String name) {
+  private Optional<GridFSDBFile> maybeLoadFileByName(String name) {
     GridFSDBFile file = gridFsTemplate.findOne(getFilenameQuery(name));
     return Optional.ofNullable(file);
   }
 
   private static Query getFilenameQuery(String name) {
     return Query.query(GridFsCriteria.whereFilename().is(name));
+  }
+
+  private Optional<GridFSDBFile> maybeLoadFileById(String id) {
+    GridFSDBFile file = gridFsTemplate.findOne(getFileIdQuery(id));
+    return Optional.ofNullable(file);
+  }
+
+  private Query getFileIdQuery(String id) {
+    return Query.query(GridFsCriteria.where("_id").is(id));
   }
 }
