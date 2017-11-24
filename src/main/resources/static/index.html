@@ -10,6 +10,17 @@
 <div>
     <ul id="file-list"></ul>
 </div>
+<div>
+    --------------------------------------------
+</div>
+<button id="getIds" onclick="getIds()">getIds</button>
+<div>
+    <ul id="file-id-list"></ul>
+</div>
+<div>
+    --------------------------------------------
+</div>
+<button id="deleteAll" onclick="deleteAll()">deleteAll</button>
 
 <script>
     var fileList = document.querySelector("#file-list");
@@ -27,6 +38,33 @@
             });
         })
     })();
+
+    var deleteAll = function(){
+      fetch("/files/deleteAll").then(function(res){
+        // 请求成功，得到 response 对象，调用 response 对象的 json 方法并返回
+        return res.json();
+      }).then(function(data){
+        // response 对象的 json 方法执行成功，得到结果
+        console.log(data);
+      });
+    };
+    var secondList = document.querySelector("#file-id-list");
+
+    var getIds = function(){
+      fetch("/files/getIds").then(function(response) {
+        response.json().then(function(data) {
+          secondList.innerHTML="";
+          if (Array.isArray(data) && data.length) {
+            for (var i=0;i<data.length;i++) {
+              var li = document.createElement("li");
+              var id = data[i];
+              li.innerHTML = "<a href='/files/id/"+id+"'>"+id+"</a>";
+              secondList.appendChild(li);
+            }
+          }
+        });
+      })
+    };
 </script>
 </body>
 </html>
